@@ -1,10 +1,10 @@
 import math
 import httpx
 from backend.config import settings
-from backend.grid import tile_to_latlng
 
 CESIUM_API = "https://api.cesium.com/v1"
 BING_ASSET_ID = 2
+_bing_key_cache: str | None = None
 
 
 def _latlng_to_global_xy(lat: float, lng: float, zoom: int) -> tuple[int, int]:
@@ -32,16 +32,24 @@ def _global_xy_to_quadkey(x: int, y: int, zoom: int) -> str:
 
 
 async def get_bing_key() -> str | None:
+    global _bing_key_cache
+    if _bing_key_cache is not None:
+        return _bing_key_cache
+    print("[Cesium] Fetching Bing Maps key from Cesium ion API ...")
     headers = {"Authorization": f"Bearer {settings.cesium_ion_token}"}
-    async with httpx.AsyncClient(timeout=15) as client:
+    async with httpx.AsyncClient(timeout=10) as client:
         resp = await client.get(
             f"{CESIUM_API}/assets/{BING_ASSET_ID}/endpoint",
             headers=headers,
         )
         if resp.status_code != 200:
+            print(f"[Cesium] Error {resp.status_code}: {resp.text[:200]}")
             return None
         data = resp.json()
-        return data.get("options", {}).get("key")
+        _bing_key_cache = data.get("options", {}).get("key")
+        if _bing_key_cache:
+            print(f"[Cesium] Bing Maps key cached")
+        return _bing_key_cache
 
 
 def bing_tile_url(lat: float, lng: float, zoom: int, bing_key: str) -> str:
@@ -65,3 +73,6 @@ async def get_tile_image_bytes(row: int, col: int, zoom: int = 18) -> bytes | No
         if resp.status_code != 200:
             return None
         return resp.content
+
+
+from backend.grid import tile_to_latlng

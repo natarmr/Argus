@@ -1,5 +1,6 @@
 from typing import TypedDict, List, Dict, Any
 from datetime import datetime
+from copy import deepcopy
 
 
 class Observation(TypedDict):
@@ -21,6 +22,24 @@ class TileMemory(TypedDict):
 
 
 collective_memory: Dict[str, TileMemory] = {}
+claims: Dict[str, int] = {}
+
+
+def claim_tile(tile_id: str, drone_id: int) -> bool:
+    existing = claims.get(tile_id)
+    if existing is not None and existing != drone_id:
+        return False
+    claims[tile_id] = drone_id
+    return True
+
+
+def release_claim(tile_id: str):
+    claims.pop(tile_id, None)
+
+
+def is_claimed_by_other(tile_id: str, drone_id: int) -> bool:
+    claimant = claims.get(tile_id)
+    return claimant is not None and claimant != drone_id
 
 
 DEFAULT_TILE_MEMORY: TileMemory = {
@@ -33,7 +52,7 @@ DEFAULT_TILE_MEMORY: TileMemory = {
 
 def get_tile(tile_id: str) -> TileMemory:
     if tile_id not in collective_memory:
-        collective_memory[tile_id] = DEFAULT_TILE_MEMORY.copy()
+        collective_memory[tile_id] = deepcopy(DEFAULT_TILE_MEMORY)
     return collective_memory[tile_id]
 
 

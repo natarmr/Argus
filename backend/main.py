@@ -7,6 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from backend.config import settings
 from backend.memory import collective_memory, get_coverage_stats
 from backend.drone import DroneAgent
+from backend.cesium_tiles import get_bing_key
 
 drone = DroneAgent(drone_id=1)
 
@@ -21,6 +22,7 @@ async def tick_loop():
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    await get_bing_key()
     task = asyncio.create_task(tick_loop())
     yield
     task.cancel()

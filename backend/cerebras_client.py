@@ -85,7 +85,10 @@ async def describe_tile(image_bytes: bytes) -> dict | None:
     async with httpx.AsyncClient(timeout=60) as client:
         resp = await client.post(CEREBRAS_API, headers=headers, json=payload)
         if resp.status_code != 200:
+            print(f"[Cerebras] Error {resp.status_code}: {resp.text[:200]}")
             return None
         data = resp.json()
         content = data["choices"][0]["message"]["content"]
-        return json.loads(content)
+        parsed = json.loads(content)
+        print(f"[Cerebras] Used {data['usage']['total_tokens']} tokens")
+        return parsed

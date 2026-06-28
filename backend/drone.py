@@ -20,12 +20,16 @@ class DroneAgent:
         if tid == self.last_observed_tile:
             return False
 
+        print(f"[Drone {self.drone_id}] Observing tile {tid} at ({self.row},{self.col}) ...")
         img = await get_tile_image_bytes(self.row, self.col)
         if img is None:
+            print(f"[Drone {self.drone_id}] Failed to fetch tile image")
             return False
 
+        print(f"[Drone {self.drone_id}] Calling Cerebras vision ...")
         result = await describe_tile(img)
         if result is None:
+            print(f"[Drone {self.drone_id}] Cerebras returned no result")
             return False
 
         obs = {
@@ -40,6 +44,7 @@ class DroneAgent:
         }
         add_observation(tid, obs)
         self.last_observed_tile = tid
+        print(f"[Drone {self.drone_id}] Tile {tid}: {result['terrain_type']} (conf={result['confidence']})")
         return True
 
     def choose_next_move(self) -> tuple[int, int]:
@@ -85,5 +90,6 @@ class DroneAgent:
         return to_row, to_col
 
     def move(self, r: int, c: int):
+        print(f"[Drone {self.drone_id}] Moving to ({r},{c})")
         self.row = r
         self.col = c
