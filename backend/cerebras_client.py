@@ -1,10 +1,12 @@
 import base64
 import json
+import asyncio
 import httpx
 from backend.config import settings
 
 CEREBRAS_API = "https://api.cerebras.ai/v1/chat/completions"
 MODEL = "gemma-4-31b"
+MAX_RETRIES = 5
 
 OBSERVATION_SCHEMA = {
     "type": "object",
@@ -83,12 +85,20 @@ async def describe_tile(image_bytes: bytes) -> dict | None:
     }
 
     async with httpx.AsyncClient(timeout=60) as client:
-        resp = await client.post(CEREBRAS_API, headers=headers, json=payload)
-        if resp.status_code != 200:
-            print(f"[Cerebras] Error {resp.status_code}: {resp.text[:200]}")
-            return None
-        data = resp.json()
-        content = data["choices"][0]["message"]["content"]
-        parsed = json.loads(content)
-        print(f"[Cerebras] Used {data['usage']['total_tokens']} tokens")
-        return parsed
+        for attempt in range(MAX_RETRIES):
+            resp = await client.post(CEREBRAS_API, headers=headers, json=payload)
+            if resp.status_code == 429:
+                wait = 2 ** attempt
+                print(f"[Cerebras] Rate limited (attempt {attempt+1}), retrying in {wait}s ...")
+                await asyncio.sleep(wait)
+                continue
+            if resp.status_code != 200:
+                print(f"[Cerebras] Error {resp.status_code}: {resp.text[:200]}")
+                return None
+            data = resp.json()
+            content = data["choices"][0]["message"]["content"]
+            parsed = json.loads(content)
+            print(f"[Cerebras] Used {data['usage']['total_tokens']} tokens")
+            return parsed
+        print("[Cerebras] Max retries exceeded")
+        return None

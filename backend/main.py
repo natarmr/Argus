@@ -5,18 +5,19 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from backend.config import settings
-from backend.memory import collective_memory, get_coverage_stats
+from backend.memory import collective_memory, get_coverage_stats, claims
 from backend.drone import DroneAgent
 from backend.cesium_tiles import get_bing_key
+from backend.grid import all_tiles
+import random
 
-drone = DroneAgent(drone_id=1)
+start_tiles = random.sample(all_tiles(), settings.num_drones)
+drones = [DroneAgent(i, start_tiles[i]) for i in range(settings.num_drones)]
 
 
 async def tick_loop():
     while True:
-        await drone.observe()
-        r, c = drone.choose_next_move()
-        drone.move(r, c)
+        await asyncio.gather(*[d.tick() for d in drones])
         await asyncio.sleep(settings.tick_interval)
 
 
@@ -51,7 +52,11 @@ async def get_state():
         }
 
     return {
-        "drone": {"id": drone.drone_id, "row": drone.row, "col": drone.col},
+        "drones": [
+            {"id": d.drone_id, "row": d.row, "col": d.col, "target": d.target_tile}
+            for d in drones
+        ],
         "tiles": tiles,
+        "claims": dict(claims),
         "coverage": get_coverage_stats(),
     }
