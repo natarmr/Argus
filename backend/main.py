@@ -8,16 +8,26 @@ from backend.config import settings
 from backend.memory import collective_memory, get_coverage_stats, claims
 from backend.drone import DroneAgent
 from backend.cesium_tiles import get_bing_key
-from backend.grid import all_tiles
+from backend.grid import all_tiles, tile_id
+from backend.coordinator import CoordinatorAgent, COORDINATOR_INTERVAL
 import random
 
 start_tiles = random.sample(all_tiles(), settings.num_drones)
 drones = [DroneAgent(i, start_tiles[i]) for i in range(settings.num_drones)]
+coordinator = CoordinatorAgent()
 
 
 async def tick_loop():
+    tick_count = 0
     while True:
         await asyncio.gather(*[d.tick() for d in drones])
+        tick_count += 1
+        if tick_count % COORDINATOR_INTERVAL == 0:
+            reassignments = await coordinator.review(drones, collective_memory)
+            for r in reassignments:
+                did = r["drone_id"]
+                target = tile_id(r["target_tile"][0], r["target_tile"][1])
+                drones[did].override_target(target, r["reason"])
         await asyncio.sleep(settings.tick_interval)
 
 

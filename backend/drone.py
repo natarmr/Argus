@@ -1,6 +1,6 @@
 import time
 import random
-from backend.grid import tile_id, all_tiles, get_neighbors
+from backend.grid import tile_id, all_tiles, get_neighbors, parse_tile_id
 from backend.memory import collective_memory, add_observation, get_tile
 from backend.memory import claim_tile, release_claim, is_claimed_by_other, claims
 from backend.cesium_tiles import get_tile_image_bytes
@@ -16,6 +16,7 @@ class DroneAgent:
         self.col = start[1]
         self.last_observed_tile: str | None = None
         self.target_tile: str | None = None
+        self._coordinator_override: bool = False
 
     def current_tile(self) -> str:
         return tile_id(self.row, self.col)
@@ -64,6 +65,15 @@ class DroneAgent:
 
         tid = self.current_tile()
         tile = get_tile(tid)
+
+        if self._coordinator_override:
+            if tid == self.target_tile:
+                self._coordinator_override = False
+            else:
+                tr, tc = parse_tile_id(self.target_tile)
+                claim_tile(self.target_tile, self.drone_id)
+                return self._path_to(self.row, self.col, tr, tc)
+
         if tile["status"] == "unexplored":
             tile["status"] = "in_progress"
             self.target_tile = tid
@@ -108,6 +118,14 @@ class DroneAgent:
                 else:
                     queue.append((nr, nc, pr, pc))
         return to_row, to_col
+
+    def override_target(self, tile_id_str: str, reason: str):
+        if self.target_tile is not None:
+            release_claim(self.target_tile)
+        self.target_tile = tile_id_str
+        self._coordinator_override = True
+        claim_tile(tile_id_str, self.drone_id)
+        print(f"[Drone {self.drone_id}] Coordinator override → {tile_id_str}: {reason}")
 
     def move(self, r: int, c: int):
         print(f"[Drone {self.drone_id}] Moving from ({self.row},{self.col}) to ({r},{c})")
