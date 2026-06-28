@@ -1,8 +1,10 @@
 import asyncio
 from contextlib import asynccontextmanager
 
+from pathlib import Path
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 
 from backend.config import settings
 from backend.memory import collective_memory, get_coverage_stats, claims
@@ -12,16 +14,32 @@ from backend.grid import all_tiles, tile_id
 from backend.coordinator import CoordinatorAgent, COORDINATOR_INTERVAL
 import random
 
+IDLE_THRESHOLD = 3
+
 start_tiles = random.sample(all_tiles(), settings.num_drones)
 drones = [DroneAgent(i, start_tiles[i]) for i in range(settings.num_drones)]
 coordinator = CoordinatorAgent()
+simulation_complete = False
+idle_ticks = 0
 
 
 async def tick_loop():
+    global simulation_complete, idle_ticks
     tick_count = 0
     while True:
         await asyncio.gather(*[d.tick() for d in drones])
         tick_count += 1
+
+        stats = get_coverage_stats()
+        if stats["mapped"] >= stats["total_tiles"]:
+            idle_ticks += 1
+            if idle_ticks >= IDLE_THRESHOLD:
+                simulation_complete = True
+                print("[TickLoop] All tiles mapped — simulation complete")
+                break
+        else:
+            idle_ticks = 0
+
         if tick_count % COORDINATOR_INTERVAL == 0:
             reassignments = await coordinator.review(drones, collective_memory)
             for r in reassignments:
@@ -33,10 +51,12 @@ async def tick_loop():
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    global simulation_complete
     await get_bing_key()
     task = asyncio.create_task(tick_loop())
     yield
-    task.cancel()
+    if not simulation_complete:
+        task.cancel()
 
 
 app = FastAPI(title="Hivemind Drone Swarm Mapper", lifespan=lifespan)
@@ -69,4 +89,23 @@ async def get_state():
         "tiles": tiles,
         "claims": dict(claims),
         "coverage": get_coverage_stats(),
+        "simulation_complete": simulation_complete,
     }
+
+
+@app.get("/config")
+async def get_config():
+    return {
+        "cesiumToken": settings.cesium_ion_token,
+        "numDrones": settings.num_drones,
+        "tickInterval": settings.tick_interval,
+        "north": 40.7130,
+        "south": 40.7000,
+        "west": -74.0200,
+        "east": -74.0050,
+    }
+
+
+frontend_dir = Path(__file__).resolve().parent.parent / "frontend"
+if frontend_dir.exists():
+    app.mount("/", StaticFiles(directory=str(frontend_dir), html=True), name="frontend")

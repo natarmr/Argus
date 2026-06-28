@@ -81,7 +81,7 @@ def get_coverage_stats() -> Dict[str, Any]:
         "in_progress": in_progress,
         "unexplored": unexplored,
         "total_tiles": total,
-        "coverage_pct": round((mapped + in_progress) / total * 100, 1),
+        "coverage_pct": round(mapped / total * 100, 1) if total > 0 else 0.0,
         "total_observations": total_observations,
     }
 
