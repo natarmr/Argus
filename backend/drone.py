@@ -147,7 +147,11 @@ class DroneAgent:
         self.target_tile = tile_id_str
         self._coordinator_override = True
         claim_tile(tile_id_str, self.drone_id)
-        print(f"[Drone {self.drone_id}] Coordinator override → {tile_id_str}: {reason}")
+        r, c = parse_tile_id(tile_id_str)
+        print(f"[Drone {self.drone_id}] Teleporting ({self.row},{self.col}) -> ({r},{c}): {reason}")
+        self.row = r
+        self.col = c
+        self.path.append((r, c))
 
     def move(self, r: int, c: int):
         if not (0 <= r < GRID_SIZE and 0 <= c < GRID_SIZE):
