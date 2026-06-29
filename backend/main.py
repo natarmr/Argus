@@ -3,6 +3,7 @@ import random
 import datetime
 import json
 import tempfile
+import traceback
 from contextlib import asynccontextmanager
 from collections import Counter
 
@@ -34,7 +35,13 @@ async def tick_loop():
     global simulation_complete, idle_ticks
     tick_count = 0
     while True:
-        await asyncio.gather(*[d.tick() for d in drones])
+        try:
+            await asyncio.gather(*[d.tick() for d in drones])
+        except Exception as e:
+            print(f"[TickLoop] ERROR in drone tick: {e}")
+            traceback.print_exc()
+            await asyncio.sleep(settings.tick_interval)
+            continue
         tick_count += 1
 
         stats = get_coverage_stats()
@@ -48,19 +55,27 @@ async def tick_loop():
             idle_ticks = 0
 
         if tick_count % COORDINATOR_INTERVAL == 0:
-            reassignments = await coordinator.review(drones, collective_memory)
-            for r in reassignments:
-                did = r["drone_id"]
-                target = tile_id(r["target_tile"][0], r["target_tile"][1])
-                drones[did].override_target(target, r["reason"])
+            try:
+                reassignments = await coordinator.review(drones, collective_memory)
+                for r in reassignments:
+                    did = r["drone_id"]
+                    target = tile_id(r["target_tile"][0], r["target_tile"][1])
+                    drones[did].override_target(target, r["reason"])
+            except Exception as e:
+                print(f"[TickLoop] ERROR in coordinator review: {e}")
+                traceback.print_exc()
         await asyncio.sleep(settings.tick_interval)
 
 
 async def synthesis_loop():
     while not simulation_complete:
-        count = await process_pending(collective_memory)
-        if count:
-            print(f"[SynthesisLoop] Mapped {count} tile(s) this cycle")
+        try:
+            count = await process_pending(collective_memory)
+            if count:
+                print(f"[SynthesisLoop] Mapped {count} tile(s) this cycle")
+        except Exception as e:
+            print(f"[SynthesisLoop] ERROR: {e}")
+            traceback.print_exc()
         await asyncio.sleep(1)
 
 
@@ -96,6 +111,14 @@ async def get_state():
         drones_set = sorted(set(o["drone_id"] for o in obs)) if obs else []
         structures = list(dict.fromkeys(s for o in obs for s in o.get("structures", [])))
         landmarks = list(dict.fromkeys(l for o in obs for l in o.get("landmarks", [])))
+        congestion_points = list(dict.fromkeys(cp for o in obs for cp in o.get("congestion_points", [])))
+        total_vehicles = sum(o.get("vehicle_count", 0) for o in obs)
+        obs_count = len(obs) or 1
+        avg_vehicles = round(total_vehicles / obs_count)
+        # traffic_density from the most-vehicles observation (worst-case)
+        traffic_density = "none"
+        if obs:
+            traffic_density = max(obs, key=lambda o: {"none": 0, "light": 1, "moderate": 2, "heavy": 3, "gridlock": 4}.get(o.get("traffic_density", "none"), 0)).get("traffic_density", "none")
         tiles[tid] = {
             "status": t["status"],
             "final_label": t["final_label"],
@@ -105,6 +128,9 @@ async def get_state():
             "description": best["raw_description"] if best else None,
             "structures": structures,
             "landmarks": landmarks,
+            "traffic_density": traffic_density,
+            "vehicle_count": avg_vehicles,
+            "congestion_points": congestion_points,
             "observed_by": drones_set,
         }
 

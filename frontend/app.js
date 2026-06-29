@@ -17,6 +17,16 @@ const LABEL_DISPLAY = {
     unknown: "unknown",
 };
 
+const TRAFFIC_ALPHA = 0.28;
+
+const TRAFFIC_COLORS = {
+    none: null,
+    light: Cesium.Color.fromCssColorString("#4CAF50").withAlpha(TRAFFIC_ALPHA),
+    moderate: Cesium.Color.fromCssColorString("#FFC107").withAlpha(TRAFFIC_ALPHA),
+    heavy: Cesium.Color.fromCssColorString("#FF5722").withAlpha(TRAFFIC_ALPHA),
+    gridlock: Cesium.Color.fromCssColorString("#F44336").withAlpha(TRAFFIC_ALPHA),
+};
+
 const TILE_COLOR_MAP = {
     residential: "#E91E63",
     commercial: "#FF8C00",
@@ -45,6 +55,7 @@ async function init() {
         selectionIndicator: false,
         terrain: Cesium.Terrain.fromWorldTerrain(),
     });
+    window.__viewer = viewer;
 
     const tileset = await Cesium.createOsmBuildingsAsync();
     viewer.scene.primitives.add(tileset);
@@ -138,7 +149,7 @@ async function init() {
             document.getElementById("tileInfo").style.display = "none";
             return;
         }
-        const tid = picked.id.name;
+        const tid = picked.id.name.replace(/_traffic$/, "");
         if (!tid.match(/^\d+_\d+$/)) { document.getElementById("tileInfo").style.display = "none"; return; }
         const [row, col] = tid.split("_").map(Number);
         const lat = NORTH - (row + 0.5) * LAT_PER_TILE;
@@ -175,6 +186,14 @@ async function init() {
         if (tile.observed_by && tile.observed_by.length) {
             html += '<div><span class="ti-label">Observed by</span> Drone ' + tile.observed_by.join(", ") + '</div>';
         }
+        if (tile.traffic_density && tile.traffic_density !== "none") {
+            const tColors = { light: "#4CAF50", moderate: "#FFC107", heavy: "#FF5722", gridlock: "#F44336" };
+            const tc = tColors[tile.traffic_density] || "#888";
+            html += '<div style="margin-top:4px"><span class="ti-label">Traffic</span> <span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:' + tc + ';vertical-align:middle"></span> ' + tile.traffic_density + ' (' + tile.vehicle_count + ' vehicles)</div>';
+        }
+        if (tile.congestion_points && tile.congestion_points.length) {
+            html += '<div><span class="ti-label">Congestion</span> ' + tile.congestion_points.join(", ") + '</div>';
+        }
 
         const el = document.getElementById("tileInfo");
         el.innerHTML = html;
@@ -207,12 +226,47 @@ async function init() {
 
                 if (tile.status === "in_progress") {
                     ent.rectangle.material = Cesium.Color.fromCssColorString("#FFD700").withAlpha(0.25);
+                    if (ent.trafficLayer) {
+                        viewer.entities.remove(ent.trafficLayer);
+                        ent.trafficLayer = null;
+                    }
                 } else if (tile.status === "mapped") {
                     ent.rectangle.material = Cesium.Color.fromCssColorString(tile.color).withAlpha(0.35);
                     const label = tile.final_label || "unknown";
                     counts[label] = (counts[label] || 0) + 1;
+
+                    // Traffic overlay on mapped tiles
+                    const tColor = TRAFFIC_COLORS[tile.traffic_density];
+                    if (tColor) {
+                        ent.rectangle.material = Cesium.Color.fromCssColorString(tile.color).withAlpha(0.35);
+                        // We overlay by mixing: use a second primitive if needed
+                        // For simplicity, blend into the existing material
+                        if (!ent.trafficLayer) {
+                            ent.trafficLayer = viewer.entities.add({
+                                name: tid + "_traffic",
+                                rectangle: {
+                                    coordinates: ent.rectangle.coordinates,
+                                    material: tColor,
+                                    outline: false,
+                                    height: 1,
+                                    heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
+                                },
+                            });
+                        } else {
+                            ent.trafficLayer.rectangle.material = tColor;
+                        }
+                    } else {
+                        if (ent.trafficLayer) {
+                            viewer.entities.remove(ent.trafficLayer);
+                            ent.trafficLayer = null;
+                        }
+                    }
                 } else {
                     ent.rectangle.material = Cesium.Color.fromCssColorString("#111111").withAlpha(1.0);
+                    if (ent.trafficLayer) {
+                        viewer.entities.remove(ent.trafficLayer);
+                        ent.trafficLayer = null;
+                    }
                 }
             }
 
@@ -244,6 +298,11 @@ async function init() {
                     detail += "<br>Most common: " + topLabel + " (" + topPct + "%)";
                 }
                 document.getElementById("finalStats").innerHTML = detail;
+                // Auto-download JSON after 1.5s
+                if (!window._autoDownloaded) {
+                    window._autoDownloaded = true;
+                    setTimeout(downloadJSON, 1500);
+                }
             }
         } catch (e) { /* server not ready yet */ }
     }
@@ -262,6 +321,8 @@ function downloadJSON() {
 }
 
 function downloadPNG() {
+    const viewer = window.__viewer;
+    if (!viewer) return;
     const canvas = viewer.scene.canvas;
     const w = canvas.width, h = canvas.height;
     canvas.width = 1920;

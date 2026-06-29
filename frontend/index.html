@@ -31,9 +31,9 @@
         }
         #complete .sub { font-size: 13px; color: #aaa; font-weight: normal; margin-top: 8px; line-height: 1.5; }
         #exportBtns { margin-top: 14px; display: flex; gap: 10px; justify-content: center; pointer-events: auto; }
-        #exportBtns button { background: #4CAF50; color: #000; border: none; padding: 7px 16px;
+        #exportBtns button { background: #333; color: #fff; border: 1px solid #4CAF50; padding: 8px 18px;
             font-family: monospace; font-size: 13px; font-weight: bold; border-radius: 6px; cursor: pointer; }
-        #exportBtns button:hover { background: #66BB6A; }
+        #exportBtns button:hover { background: #4CAF50; color: #000; }
         #legend {
             position: absolute; bottom: 24px; right: 16px; z-index: 100;
             background: rgba(0,0,0,0.72); color: #ccc; padding: 7px 10px;
@@ -84,6 +84,11 @@
         <div class="legend-item"><span class="swatch" style="background:#2196F3"></span> water</div>
         <div class="legend-item"><span class="swatch" style="background:#FFEB3B"></span> infrastructure</div>
         <div class="legend-item"><span class="swatch" style="background:#FFFFFF"></span> unknown</div>
+        <div style="border-top:1px solid #444;margin:4px 0 2px;padding-top:4px;font-size:10px;color:#ffd700">Traffic</div>
+        <div class="legend-item"><span class="swatch" style="background:#4CAF50"></span> light</div>
+        <div class="legend-item"><span class="swatch" style="background:#FFC107"></span> moderate</div>
+        <div class="legend-item"><span class="swatch" style="background:#FF5722"></span> heavy</div>
+        <div class="legend-item"><span class="swatch" style="background:#F44336"></span> gridlock</div>
     </div>
 
     <script src="app.js"></script>

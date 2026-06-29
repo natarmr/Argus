@@ -18,6 +18,9 @@ OBSERVATION_SCHEMA = {
         "structures": {"type": "array", "items": {"type": "string"}},
         "landmarks": {"type": "array", "items": {"type": "string"}},
         "density": {"type": "string", "enum": ["low", "medium", "high", "very_high"]},
+        "traffic_density": {"type": "string", "enum": ["none", "light", "moderate", "heavy", "gridlock"]},
+        "vehicle_count": {"type": "integer", "minimum": 0},
+        "congestion_points": {"type": "array", "items": {"type": "string"}},
         "confidence": {"type": "number", "minimum": 0, "maximum": 1},
         "raw_description": {"type": "string"},
     },
@@ -26,6 +29,9 @@ OBSERVATION_SCHEMA = {
         "structures",
         "landmarks",
         "density",
+        "traffic_density",
+        "vehicle_count",
+        "congestion_points",
         "confidence",
         "raw_description",
     ],
@@ -51,7 +57,9 @@ async def describe_tile(image_bytes: bytes) -> dict | None:
                 "content": (
                     "You are a satellite imagery analyst. Examine the aerial image of a tile in Lower Manhattan "
                     "and produce a structured observation. Be thorough and specific about structures, landmarks, "
-                    "and terrain type. Use high confidence only when you are certain."
+                    "and terrain type. Also analyze vehicular traffic: note traffic density, estimate number of "
+                    "visible vehicles, and identify any congestion points (intersections, bridges, tunnels). "
+                    "Use high confidence only when you are certain."
                 ),
             },
             {
@@ -63,6 +71,8 @@ async def describe_tile(image_bytes: bytes) -> dict | None:
                             "Analyze this satellite image tile from Lower Manhattan. "
                             "Identify the terrain type, structures visible, notable landmarks, "
                             "building/development density, and your confidence level. "
+                            "Also assess traffic: rate traffic density (none/light/moderate/heavy/gridlock), "
+                            "count visible vehicles, and list any congestion points. "
                             "Provide a concise raw description of what you see."
                         ),
                     },

@@ -51,6 +51,9 @@ class DroneAgent:
             "structures": result["structures"],
             "landmarks": result["landmarks"],
             "density": result["density"],
+            "traffic_density": result["traffic_density"],
+            "vehicle_count": result["vehicle_count"],
+            "congestion_points": result["congestion_points"],
             "confidence": result["confidence"],
             "raw_description": result["raw_description"],
         }

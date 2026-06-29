@@ -10,6 +10,9 @@ class Observation(TypedDict):
     structures: List[str]
     landmarks: List[str]
     density: str
+    traffic_density: str
+    vehicle_count: int
+    congestion_points: List[str]
     confidence: float
     raw_description: str
 
