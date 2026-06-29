@@ -21,19 +21,19 @@ const TRAFFIC_ALPHA = 0.28;
 
 const TRAFFIC_COLORS = {
     none: null,
-    light: Cesium.Color.fromCssColorString("#4CAF50").withAlpha(TRAFFIC_ALPHA),
+    light: Cesium.Color.fromCssColorString("#8BC34A").withAlpha(TRAFFIC_ALPHA),
     moderate: Cesium.Color.fromCssColorString("#FFC107").withAlpha(TRAFFIC_ALPHA),
-    heavy: Cesium.Color.fromCssColorString("#FF5722").withAlpha(TRAFFIC_ALPHA),
-    gridlock: Cesium.Color.fromCssColorString("#F44336").withAlpha(TRAFFIC_ALPHA),
+    heavy: Cesium.Color.fromCssColorString("#E65100").withAlpha(TRAFFIC_ALPHA),
+    gridlock: Cesium.Color.fromCssColorString("#B71C1C").withAlpha(TRAFFIC_ALPHA),
 };
 
 const TILE_COLOR_MAP = {
-    residential: "#E91E63",
-    commercial: "#FF8C00",
-    industrial: "#9E9E9E",
-    green_space: "#4CAF50",
-    water: "#2196F3",
-    infrastructure: "#FFEB3B",
+    residential: "#9C27B0",
+    commercial: "#FF6F00",
+    industrial: "#607D8B",
+    green_space: "#2E7D32",
+    water: "#1565C0",
+    infrastructure: "#FDD835",
     unknown: "#FFFFFF",
 };
 

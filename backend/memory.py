@@ -93,12 +93,12 @@ from backend.grid import GRID_SIZE
 
 
 COLOR_MAP: dict[str, str] = {
-    "residential": "#E91E63",
-    "commercial": "#FF8C00",
-    "industrial": "#9E9E9E",
-    "green_space": "#4CAF50",
-    "water": "#2196F3",
-    "infrastructure": "#FFEB3B",
+    "residential": "#9C27B0",
+    "commercial": "#FF6F00",
+    "industrial": "#607D8B",
+    "green_space": "#2E7D32",
+    "water": "#1565C0",
+    "infrastructure": "#FDD835",
     "unknown": "#FFFFFF",
 }
 
