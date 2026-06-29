@@ -12,6 +12,7 @@ from backend.drone import DroneAgent
 from backend.cesium_tiles import get_bing_key
 from backend.grid import all_tiles, tile_id
 from backend.coordinator import CoordinatorAgent, COORDINATOR_INTERVAL
+from backend.synthesis import process_pending
 import random
 
 IDLE_THRESHOLD = 3
@@ -49,14 +50,24 @@ async def tick_loop():
         await asyncio.sleep(settings.tick_interval)
 
 
+async def synthesis_loop():
+    while not simulation_complete:
+        count = await process_pending(collective_memory)
+        if count:
+            print(f"[SynthesisLoop] Mapped {count} tile(s) this cycle")
+        await asyncio.sleep(1)
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     global simulation_complete
     await get_bing_key()
-    task = asyncio.create_task(tick_loop())
+    tick_task = asyncio.create_task(tick_loop())
+    synth_task = asyncio.create_task(synthesis_loop())
     yield
     if not simulation_complete:
-        task.cancel()
+        tick_task.cancel()
+    synth_task.cancel()
 
 
 app = FastAPI(title="Hivemind Drone Swarm Mapper", lifespan=lifespan)
@@ -74,11 +85,21 @@ app.add_middleware(
 async def get_state():
     tiles = {}
     for tid, t in collective_memory.items():
+        obs = t.get("observations", [])
+        best = max(obs, key=lambda o: o.get("confidence", 0)) if obs else None
+        drones_set = sorted(set(o["drone_id"] for o in obs)) if obs else []
+        structures = list(dict.fromkeys(s for o in obs for s in o.get("structures", [])))
+        landmarks = list(dict.fromkeys(l for o in obs for l in o.get("landmarks", [])))
         tiles[tid] = {
             "status": t["status"],
             "final_label": t["final_label"],
             "color": t["color"],
-            "observation_count": len(t["observations"]),
+            "observation_count": len(obs),
+            "top_confidence": best["confidence"] if best else None,
+            "description": best["raw_description"] if best else None,
+            "structures": structures,
+            "landmarks": landmarks,
+            "observed_by": drones_set,
         }
 
     return {
@@ -103,6 +124,7 @@ async def get_config():
         "south": 40.7000,
         "west": -74.0200,
         "east": -74.0050,
+        "drone_starts": [{"id": d.drone_id, "row": d.row, "col": d.col} for d in drones],
     }
 
 

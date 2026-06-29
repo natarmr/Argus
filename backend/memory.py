@@ -87,3 +87,18 @@ def get_coverage_stats() -> Dict[str, Any]:
 
 
 from backend.grid import GRID_SIZE
+
+
+COLOR_MAP: dict[str, str] = {
+    "residential": "#E91E63",
+    "commercial": "#FF8C00",
+    "industrial": "#9E9E9E",
+    "green_space": "#4CAF50",
+    "water": "#2196F3",
+    "infrastructure": "#FFEB3B",
+    "unknown": "#FFFFFF",
+}
+
+
+def get_terrain_color(label: str) -> str:
+    return COLOR_MAP.get(label, COLOR_MAP["unknown"])

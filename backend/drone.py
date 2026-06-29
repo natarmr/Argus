@@ -1,6 +1,6 @@
 import time
 import random
-from backend.grid import tile_id, all_tiles, get_neighbors, parse_tile_id
+from backend.grid import tile_id, all_tiles, get_neighbors, parse_tile_id, GRID_SIZE
 from backend.memory import collective_memory, add_observation, get_tile
 from backend.memory import claim_tile, release_claim, is_claimed_by_other, claims
 from backend.cesium_tiles import get_tile_image_bytes
@@ -128,6 +128,9 @@ class DroneAgent:
         print(f"[Drone {self.drone_id}] Coordinator override → {tile_id_str}: {reason}")
 
     def move(self, r: int, c: int):
+        if not (0 <= r < GRID_SIZE and 0 <= c < GRID_SIZE):
+            print(f"[Drone {self.drone_id}] *** OUT OF BOUNDS *** move to ({r},{c}) — STAYING at ({self.row},{self.col})")
+            return
         print(f"[Drone {self.drone_id}] Moving from ({self.row},{self.col}) to ({r},{c})")
         self.row = r
         self.col = c

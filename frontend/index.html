@@ -11,49 +11,73 @@
         html, body, #cesiumContainer { width: 100%; height: 100%; margin: 0; padding: 0; overflow: hidden; }
         #hud {
             position: absolute; top: 12px; left: 12px; z-index: 100;
-            background: rgba(0,0,0,0.75); color: #fff; padding: 10px 14px;
-            font-family: monospace; font-size: 13px; border-radius: 6px; line-height: 1.5;
-            min-width: 200px; pointer-events: none;
+            background: rgba(0,0,0,0.78); color: #ddd; padding: 10px 14px;
+            font-family: monospace; font-size: 12px; border-radius: 6px; line-height: 1.6;
+            min-width: 220px; pointer-events: none;
         }
-        #hud .title { font-weight: bold; color: #ffd700; font-size: 15px; margin-bottom: 4px; }
-        #hud .stat { display: flex; justify-content: space-between; gap: 20px; }
+        #hud .title { font-weight: bold; color: #ffd700; font-size: 14px; margin-bottom: 4px; }
+        #hud .stat { display: flex; justify-content: space-between; gap: 16px; }
+        #hud .section-title { color: #ffd700; font-size: 11px; margin-top: 6px; border-top: 1px solid #444; padding-top: 4px; }
+        .brk-row { display: flex; align-items: center; gap: 5px; font-size: 11px; }
+        .brk-swatch { width: 10px; height: 10px; border-radius: 2px; display: inline-block; flex-shrink: 0; }
+        .brk-pct { color: #aaa; margin-left: auto; }
         #complete {
-            display: none;
-            position: absolute; top: 50%; left: 50%; z-index: 200;
+            display: none; position: absolute; top: 50%; left: 50%; z-index: 200;
             transform: translate(-50%, -50%);
-            background: rgba(0,0,0,0.85); color: #4CAF50; padding: 24px 40px;
-            font-family: monospace; font-size: 28px; font-weight: bold;
-            border-radius: 12px; border: 2px solid #4CAF50;
-            text-align: center; pointer-events: none;
+            background: rgba(0,0,0,0.88); color: #4CAF50; padding: 20px 36px;
+            font-family: monospace; font-size: 24px; font-weight: bold;
+            border-radius: 12px; border: 2px solid #4CAF50; text-align: center; pointer-events: none;
+            min-width: 320px;
         }
-        #complete .sub { font-size: 14px; color: #aaa; font-weight: normal; margin-top: 6px; }
+        #complete .sub { font-size: 13px; color: #aaa; font-weight: normal; margin-top: 8px; line-height: 1.5; }
         #legend {
-            position: absolute; bottom: 30px; right: 20px; z-index: 100;
-            background: rgba(0,0,0,0.7); color: #ccc; padding: 8px 12px;
-            font-family: monospace; font-size: 11px; border-radius: 6px; line-height: 1.8;
+            position: absolute; bottom: 24px; right: 16px; z-index: 100;
+            background: rgba(0,0,0,0.72); color: #ccc; padding: 7px 10px;
+            font-family: monospace; font-size: 11px; border-radius: 6px; line-height: 1.9;
             pointer-events: none;
         }
-        .legend-item { display: flex; align-items: center; gap: 6px; }
-        .swatch { width: 14px; height: 14px; border-radius: 3px; display: inline-block; }
+        .legend-item { display: flex; align-items: center; gap: 5px; }
+        .swatch { width: 12px; height: 12px; border-radius: 2px; display: inline-block; flex-shrink: 0; }
+        #tileInfo {
+            display: none; position: absolute; z-index: 150;
+            background: rgba(0,0,0,0.85); color: #ddd; padding: 10px 14px;
+            font-family: monospace; font-size: 11px; border-radius: 6px; line-height: 1.5;
+            max-width: 320px; pointer-events: none; border: 1px solid #555;
+        }
+        #tileInfo .ti-title { font-weight: bold; font-size: 13px; margin-bottom: 4px; color: #ffd700; }
+        #tileInfo .ti-row { display: flex; gap: 10px; }
+        #tileInfo .ti-label { color: #888; min-width: 80px; }
     </style>
 </head>
 <body>
     <div id="cesiumContainer"></div>
+
     <div id="hud">
         <div class="title">Hivemind Drone Swarm</div>
         <div class="stat"><span>Coverage:</span><span id="coveragePct">0%</span></div>
-        <div class="stat"><span>Mapped:</span><span id="mappedCount">0/100</span></div>
+        <div class="stat"><span>Mapped:</span><span id="mappedCount">0/400</span></div>
         <div class="stat"><span>Observations:</span><span id="obsCount">0</span></div>
+        <div class="section-title">Map Breakdown</div>
+        <div id="breakdown"></div>
     </div>
+
     <div id="complete">
         ✓ Mapping Complete
         <div class="sub" id="finalStats"></div>
     </div>
+
+    <div id="tileInfo"></div>
+
     <div id="legend">
-        <div class="legend-item"><span class="swatch" style="background:#555"></span> unexplored</div>
-        <div class="legend-item"><span class="swatch" style="background:#FFD700"></span> in progress</div>
-        <div class="legend-item"><span class="swatch" style="background:#4CAF50"></span> mapped</div>
+        <div class="legend-item"><span class="swatch" style="background:#E91E63"></span> residential</div>
+        <div class="legend-item"><span class="swatch" style="background:#FF8C00"></span> commercial</div>
+        <div class="legend-item"><span class="swatch" style="background:#9E9E9E"></span> industrial</div>
+        <div class="legend-item"><span class="swatch" style="background:#4CAF50"></span> green space</div>
+        <div class="legend-item"><span class="swatch" style="background:#2196F3"></span> water</div>
+        <div class="legend-item"><span class="swatch" style="background:#FFEB3B"></span> infrastructure</div>
+        <div class="legend-item"><span class="swatch" style="background:#FFFFFF"></span> unknown</div>
     </div>
+
     <script src="app.js"></script>
 </body>
 </html>

@@ -7,6 +7,8 @@ from backend.grid import GRID_SIZE, tile_id, parse_tile_id
 COORDINATOR_INTERVAL = 5
 REQUIRED_FIELDS = {"drone_id", "target_tile", "reason"}
 
+MAX_IDX = GRID_SIZE - 1
+
 COORDINATOR_SCHEMA = {
     "type": "object",
     "properties": {
@@ -15,12 +17,12 @@ COORDINATOR_SCHEMA = {
             "items": {
                 "type": "object",
                 "properties": {
-                    "drone_id": {"type": "integer", "minimum": 0, "maximum": 9},
+                    "drone_id": {"type": "integer", "minimum": 0, "maximum": settings.num_drones - 1},
                     "target_tile": {
                         "type": "array",
                         "prefixItems": [
-                            {"type": "integer", "minimum": 0, "maximum": 9},
-                            {"type": "integer", "minimum": 0, "maximum": 9},
+                            {"type": "integer", "minimum": 0, "maximum": MAX_IDX},
+                            {"type": "integer", "minimum": 0, "maximum": MAX_IDX},
                         ],
                         "items": False,
                     },
@@ -40,7 +42,7 @@ def _build_ascii_grid(memory: dict, drones: list) -> str:
     grid = {}
     for r in range(GRID_SIZE):
         for c in range(GRID_SIZE):
-            grid[(r, c)] = "U"
+            grid[(r, c)] = " U"
 
     drone_positions = {}
     for d in drones:
@@ -49,17 +51,18 @@ def _build_ascii_grid(memory: dict, drones: list) -> str:
     for tid, t in memory.items():
         r, c = parse_tile_id(tid)
         if t["status"] == "in_progress":
-            grid[(r, c)] = "."
+            grid[(r, c)] = " ."
         elif t["status"] == "mapped":
-            grid[(r, c)] = "M"
+            grid[(r, c)] = " M"
 
     for (r, c), did in drone_positions.items():
         tid = tile_id(r, c)
         tile = memory.get(tid, {})
         if tile.get("status") == "unexplored":
-            grid[(r, c)] = str(did)
+            grid[(r, c)] = f"{did:2}"
 
-    lines = ["   " + " ".join(str(c) for c in range(GRID_SIZE))]
+    cols = " ".join(f"{c:2}" for c in range(GRID_SIZE))
+    lines = ["   " + cols]
     for r in range(GRID_SIZE):
         row = f"{r:2} " + " ".join(grid[(r, c)] for c in range(GRID_SIZE))
         lines.append(row)
@@ -86,13 +89,13 @@ class CoordinatorAgent:
         summary = _build_summary(memory, drones)
 
         prompt = (
-            "You are a drone swarm coordinator exploring Lower Manhattan. "
-            "The grid below shows the current state of a 10x10 tile map.\n\n"
+            f"You are a drone swarm coordinator exploring Lower Manhattan. "
+            f"The grid below shows the current state of a {GRID_SIZE}x{GRID_SIZE} tile map.\n\n"
             "Legend:\n"
             "  U = unexplored\n"
             "  . = drone currently observing this tile\n"
             "  M = mapped (fully analyzed)\n"
-            "  0-9 = drone ID occupying this tile\n\n"
+            f"  0-{settings.num_drones - 1} = drone ID occupying this tile\n\n"
             f"{grid_str}\n\n"
             f"{summary}\n\n"
             "Identify inefficiencies and produce reassignments. "
@@ -100,7 +103,7 @@ class CoordinatorAgent:
             "  - Multiple drones converging on the same quadrant\n"
             "  - Large gaps of unexplored tiles with no drone nearby\n"
             "  - Drones in already-mapped areas\n\n"
-            "Output a list of reassignments. Each must have: drone_id (0-9), "
+            f"Output a list of reassignments. Each must have: drone_id (0-{MAX_IDX}), "
             "target_tile as [row, col], and a reason string. "
             "If no reassignments are needed, return an empty list."
         )
