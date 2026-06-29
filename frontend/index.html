@@ -17,6 +17,16 @@
         }
         #hud .title { font-weight: bold; color: #ffd700; font-size: 15px; margin-bottom: 4px; }
         #hud .stat { display: flex; justify-content: space-between; gap: 20px; }
+        #complete {
+            display: none;
+            position: absolute; top: 50%; left: 50%; z-index: 200;
+            transform: translate(-50%, -50%);
+            background: rgba(0,0,0,0.85); color: #4CAF50; padding: 24px 40px;
+            font-family: monospace; font-size: 28px; font-weight: bold;
+            border-radius: 12px; border: 2px solid #4CAF50;
+            text-align: center; pointer-events: none;
+        }
+        #complete .sub { font-size: 14px; color: #aaa; font-weight: normal; margin-top: 6px; }
         #legend {
             position: absolute; bottom: 30px; right: 20px; z-index: 100;
             background: rgba(0,0,0,0.7); color: #ccc; padding: 8px 12px;
@@ -34,6 +44,10 @@
         <div class="stat"><span>Coverage:</span><span id="coveragePct">0%</span></div>
         <div class="stat"><span>Mapped:</span><span id="mappedCount">0/100</span></div>
         <div class="stat"><span>Observations:</span><span id="obsCount">0</span></div>
+    </div>
+    <div id="complete">
+        ✓ Mapping Complete
+        <div class="sub" id="finalStats"></div>
     </div>
     <div id="legend">
         <div class="legend-item"><span class="swatch" style="background:#555"></span> unexplored</div>

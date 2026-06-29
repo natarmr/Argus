@@ -5,6 +5,7 @@ const EAST = -74.0050;
 const GRID_SIZE = 10;
 const LAT_PER_TILE = (NORTH - SOUTH) / GRID_SIZE;
 const LNG_PER_TILE = (EAST - WEST) / GRID_SIZE;
+const ANIM_LERP = 0.12;
 
 const COLOR_MAP = {
     residential: Cesium.Color.fromCssColorString("#2196F3"),
@@ -45,11 +46,18 @@ async function init() {
         duration: 0,
     });
 
+    const numDrones = config.numDrones;
+
     const droneMarkers = [];
-    for (let i = 0; i < 10; i++) {
+    const droneAnim = [];
+    for (let i = 0; i < numDrones; i++) {
+        const pos = Cesium.Cartesian3.fromDegrees(-74.01, 40.705, 80);
         const marker = viewer.entities.add({
-            position: Cesium.Cartesian3.fromDegrees(-74.01, 40.705, 50),
-            point: { pixelSize: 10, color: Cesium.Color.YELLOW, outlineColor: Cesium.Color.BLACK, outlineWidth: 1 },
+            position: pos,
+            point: {
+                pixelSize: 10, color: Cesium.Color.YELLOW,
+                outlineColor: Cesium.Color.BLACK, outlineWidth: 1.5,
+            },
             label: {
                 text: String(i),
                 font: "bold 11px monospace",
@@ -63,7 +71,16 @@ async function init() {
             },
         });
         droneMarkers.push(marker);
+        droneAnim.push({ current: pos.clone(), target: pos.clone() });
     }
+
+    viewer.clock.onTick.addEventListener(() => {
+        for (let i = 0; i < numDrones; i++) {
+            const a = droneAnim[i];
+            Cesium.Cartesian3.lerp(a.current, a.target, ANIM_LERP, a.current);
+            droneMarkers[i].position = a.current;
+        }
+    });
 
     const tileEntities = {};
     for (let r = 0; r < GRID_SIZE; r++) {
@@ -76,11 +93,12 @@ async function init() {
                 name: r + "_" + c,
                 rectangle: {
                     coordinates: Cesium.Rectangle.fromDegrees(w, s, e, n),
-                    material: Cesium.Color.GRAY.withAlpha(0.0),
+                    material: Cesium.Color.fromCssColorString("#111111").withAlpha(1.0),
                     outline: true,
-                    outlineColor: Cesium.Color.WHITE.withAlpha(0.12),
+                    outlineColor: Cesium.Color.WHITE.withAlpha(0.08),
                     outlineWidth: 1,
                     height: 0,
+                    heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
                 },
             });
             tileEntities[r + "_" + c] = ent;
@@ -95,19 +113,21 @@ async function init() {
             for (const d of state.drones) {
                 const lat = NORTH - (d.row + 0.5) * LAT_PER_TILE;
                 const lng = WEST + (d.col + 0.5) * LNG_PER_TILE;
-                droneMarkers[d.id].position = Cesium.Cartesian3.fromDegrees(lng, lat, 50);
+                const newPos = Cesium.Cartesian3.fromDegrees(lng, lat, 80);
+                droneAnim[d.id].target = newPos;
             }
 
             for (const [tid, tile] of Object.entries(state.tiles)) {
                 const ent = tileEntities[tid];
                 if (!ent) continue;
                 let color;
-                if (tile.status === "unexplored") {
-                    color = Cesium.Color.fromCssColorString("#444444").withAlpha(0.5);
-                } else if (tile.status === "in_progress") {
-                    color = Cesium.Color.fromCssColorString("#FFD700").withAlpha(0.35);
+                if (tile.status === "in_progress") {
+                    color = Cesium.Color.fromCssColorString("#FFD700").withAlpha(0.25);
+                } else if (tile.status === "mapped") {
+                    const base = COLOR_MAP[tile.final_label] || COLOR_MAP.unknown;
+                    color = base.withAlpha(0.3);
                 } else {
-                    color = (COLOR_MAP[tile.final_label] || COLOR_MAP.unknown).withAlpha(0.5);
+                    color = Cesium.Color.fromCssColorString("#111111").withAlpha(1.0);
                 }
                 ent.rectangle.material = color;
             }
@@ -115,6 +135,12 @@ async function init() {
             document.getElementById("coveragePct").textContent = state.coverage.coverage_pct + "%";
             document.getElementById("mappedCount").textContent = state.coverage.mapped + "/" + state.coverage.total_tiles;
             document.getElementById("obsCount").textContent = state.coverage.total_observations;
+
+            if (state.simulation_complete) {
+                document.getElementById("complete").style.display = "block";
+                document.getElementById("finalStats").textContent =
+                    state.coverage.mapped + " tiles mapped, " + state.coverage.total_observations + " total observations";
+            }
         } catch (e) { /* server not ready yet */ }
     }
 
