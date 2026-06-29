@@ -1,10 +1,15 @@
 import time
 import random
+import asyncio
 from backend.grid import tile_id, all_tiles, get_neighbors, parse_tile_id, GRID_SIZE
 from backend.memory import collective_memory, add_observation, get_tile
 from backend.memory import claim_tile, release_claim, claims
 from backend.cesium_tiles import get_tile_image_bytes
 from backend.cerebras_client import describe_tile
+
+
+# Limit concurrent Cerebras vision calls to avoid 429 rate limit bursts
+_cerebras_semaphore = asyncio.Semaphore(15)
 
 
 class DroneAgent:
@@ -55,8 +60,9 @@ class DroneAgent:
             print(f"[Drone {self.drone_id}] Failed to fetch tile image")
             return False
 
-        print(f"[Drone {self.drone_id}] Calling Cerebras vision ...")
-        result = await describe_tile(img)
+        async with _cerebras_semaphore:
+            print(f"[Drone {self.drone_id}] Calling Cerebras vision ...")
+            result = await describe_tile(img)
         if result is None:
             print(f"[Drone {self.drone_id}] Cerebras returned no result")
             return False
