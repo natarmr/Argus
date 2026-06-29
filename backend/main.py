@@ -1,10 +1,16 @@
 import asyncio
+import random
+import datetime
+import json
+import tempfile
 from contextlib import asynccontextmanager
+from collections import Counter
 
 from pathlib import Path
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 
 from backend.config import settings
 from backend.memory import collective_memory, get_coverage_stats, claims
@@ -126,6 +132,57 @@ async def get_config():
         "east": -74.0050,
         "drone_starts": [{"id": d.drone_id, "row": d.row, "col": d.col} for d in drones],
     }
+
+
+@app.get("/export")
+async def export_map():
+    stats = get_coverage_stats()
+
+    tiles_export = {}
+    label_counts = Counter()
+    for tid, t in collective_memory.items():
+        tile_data = {
+            "status": t["status"],
+            "final_label": t["final_label"],
+            "color": t["color"],
+            "observation_count": len(t["observations"]),
+            "observations": t["observations"],
+        }
+        tiles_export[tid] = tile_data
+        if t["status"] == "mapped":
+            label_counts[t["final_label"]] += 1
+
+    total_mapped = sum(label_counts.values()) or 1
+    breakdown = {
+        label: {"count": count, "pct": round(count / total_mapped * 100, 1)}
+        for label, count in label_counts.most_common()
+    }
+
+    payload = {
+        "simulation": {
+            "timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+            "grid_size": 20,
+            "num_drones": settings.num_drones,
+            "total_tiles": stats["total_tiles"],
+            "mapped": stats["mapped"],
+            "in_progress": stats["in_progress"],
+            "total_observations": stats["total_observations"],
+            "simulation_complete": simulation_complete,
+        },
+        "breakdown": breakdown,
+        "tiles": tiles_export,
+        "drones": [
+            {"id": d.drone_id, "path": d.path}
+            for d in drones
+        ],
+    }
+
+    f = tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False)
+    json.dump(payload, f, indent=2)
+    f.close()
+    return FileResponse(f.name, media_type="application/json",
+                        filename=f"hivemind-map-{datetime.date.today().isoformat()}.json",
+                        headers={"Content-Disposition": "attachment"})
 
 
 frontend_dir = Path(__file__).resolve().parent.parent / "frontend"

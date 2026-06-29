@@ -14,6 +14,7 @@ class DroneAgent:
             start = random.choice(all_tiles())
         self.row = start[0]
         self.col = start[1]
+        self.path = [(self.row, self.col)]
         self.last_observed_tile: str | None = None
         self.target_tile: str | None = None
         self._coordinator_override: bool = False
@@ -134,3 +135,4 @@ class DroneAgent:
         print(f"[Drone {self.drone_id}] Moving from ({self.row},{self.col}) to ({r},{c})")
         self.row = r
         self.col = c
+        self.path.append((r, c))

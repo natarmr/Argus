@@ -9,6 +9,9 @@ class Settings(BaseSettings):
     grid_size: int = 10
     num_drones: int = 10
     cesium_asset_name: str = "Bing Maps Aerial"
+    redis_host: str = "localhost"
+    redis_port: int = 6379
+    redis_db: int = 0
 
     class Config:
         env_file = ".env"

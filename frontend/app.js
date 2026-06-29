@@ -252,4 +252,31 @@ async function init() {
     poll();
 }
 
+function downloadJSON() {
+    const a = document.createElement("a");
+    a.href = "/export";
+    a.download = "hivemind-map.json";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+}
+
+function downloadPNG() {
+    const canvas = viewer.scene.canvas;
+    const w = canvas.width, h = canvas.height;
+    canvas.width = 1920;
+    canvas.height = 1920;
+    viewer.resize();
+    const dataUrl = canvas.toDataURL("image/png");
+    canvas.width = w;
+    canvas.height = h;
+    viewer.resize();
+    const a = document.createElement("a");
+    a.href = dataUrl;
+    a.download = "hivemind-map.png";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+}
+
 init().catch(console.error);

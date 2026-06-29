@@ -30,6 +30,10 @@
             min-width: 320px;
         }
         #complete .sub { font-size: 13px; color: #aaa; font-weight: normal; margin-top: 8px; line-height: 1.5; }
+        #exportBtns { margin-top: 14px; display: flex; gap: 10px; justify-content: center; pointer-events: auto; }
+        #exportBtns button { background: #4CAF50; color: #000; border: none; padding: 7px 16px;
+            font-family: monospace; font-size: 13px; font-weight: bold; border-radius: 6px; cursor: pointer; }
+        #exportBtns button:hover { background: #66BB6A; }
         #legend {
             position: absolute; bottom: 24px; right: 16px; z-index: 100;
             background: rgba(0,0,0,0.72); color: #ccc; padding: 7px 10px;
@@ -64,6 +68,10 @@
     <div id="complete">
         ✓ Mapping Complete
         <div class="sub" id="finalStats"></div>
+        <div id="exportBtns">
+            <button onclick="downloadJSON()">Download JSON</button>
+            <button onclick="downloadPNG()">Download Map PNG</button>
+        </div>
     </div>
 
     <div id="tileInfo"></div>
