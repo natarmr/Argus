@@ -20,7 +20,6 @@ from backend.cesium_tiles import get_bing_key
 from backend.grid import all_tiles, tile_id
 from backend.coordinator import CoordinatorAgent, COORDINATOR_INTERVAL
 from backend.synthesis import process_pending
-import random
 
 IDLE_THRESHOLD = 3
 
@@ -100,6 +99,14 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.middleware("http")
+async def no_cache_static(request, call_next):
+    response = await call_next(request)
+    if request.url.path in ("/", "/index.html", "/app.js"):
+        response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+    return response
 
 
 @app.get("/state")

@@ -32,6 +32,13 @@ class DroneAgent:
         if tid == self.last_observed_tile:
             return False
 
+        # Skip if this drone already observed this tile
+        tile = get_tile(tid)
+        for obs in tile["observations"]:
+            if obs["drone_id"] == self.drone_id:
+                print(f"[Drone {self.drone_id}] Already observed {tid}, skipping")
+                return False
+
         print(f"[Drone {self.drone_id}] Observing tile {tid} at ({self.row},{self.col}) ...")
         img = await get_tile_image_bytes(self.row, self.col)
         if img is None:

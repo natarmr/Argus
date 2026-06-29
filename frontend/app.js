@@ -301,7 +301,7 @@ async function init() {
                 // Auto-download JSON after 1.5s
                 if (!window._autoDownloaded) {
                     window._autoDownloaded = true;
-                    setTimeout(downloadJSON, 1500);
+                    setTimeout(() => { window.location.href = "/export"; }, 1500);
                 }
             }
         } catch (e) { /* server not ready yet */ }

@@ -2,12 +2,46 @@ import json
 import asyncio
 import httpx
 from backend.config import settings
-from backend.grid import GRID_SIZE, tile_id, parse_tile_id
+from backend.grid import GRID_SIZE, tile_id, parse_tile_id, get_neighbors
 
 COORDINATOR_INTERVAL = 5
 REQUIRED_FIELDS = {"drone_id", "target_tile", "reason"}
 
 MAX_IDX = GRID_SIZE - 1
+
+IDLE_WEIGHT = 50
+
+
+def _reassign_idle_drones(memory: dict, drones: list) -> list[dict]:
+    reassignments = []
+    for d in drones:
+        if d.target_tile is not None:
+            continue
+        # Find globally nearest unexplored tile via BFS
+        seen = {tile_id(d.row, d.col)}
+        queue = [(d.row, d.col)]
+        found = None
+        while queue:
+            r, c = queue.pop(0)
+            for nr, nc in get_neighbors(r, c):
+                ntid = tile_id(nr, nc)
+                if ntid in seen:
+                    continue
+                seen.add(ntid)
+                nt = memory.get(ntid)
+                if nt is None or nt.get("status") == "unexplored":
+                    found = (nr, nc)
+                    break
+                queue.append((nr, nc))
+            if found:
+                break
+        if found:
+            reassignments.append({
+                "drone_id": d.drone_id,
+                "target_tile": [found[0], found[1]],
+                "reason": "idle — reassigned to nearest unexplored tile",
+            })
+    return reassignments
 
 COORDINATOR_SCHEMA = {
     "type": "object",
@@ -85,6 +119,13 @@ class CoordinatorAgent:
         self.last_reassignments: list[dict] = []
 
     async def review(self, drones: list, memory: dict) -> list[dict]:
+        # 1. Local heuristic: reassign idle drones (no target) to nearest unexplored
+        idle_reassignments = _reassign_idle_drones(memory, drones)
+        if idle_reassignments:
+            print(f"[Coordinator] Idle heuristic: {len(idle_reassignments)} drone(s) reassigned")
+            for r in idle_reassignments:
+                print(f"  Drone {r['drone_id']} -> [{r['target_tile'][0]},{r['target_tile'][1]}] : {r['reason']}")
+
         grid_str = _build_ascii_grid(memory, drones)
         summary = _build_summary(memory, drones)
 
@@ -147,14 +188,18 @@ class CoordinatorAgent:
                     data = resp.json()
                     content = data["choices"][0]["message"]["content"]
                     parsed = json.loads(content)
-                    reassignments = parsed.get("reassignments", [])
-                    print(f"[Coordinator] {len(reassignments)} reassignment(s) issued")
-                    for r in reassignments:
+                    cerebras_reassignments = parsed.get("reassignments", [])
+                    print(f"[Coordinator] {len(cerebras_reassignments)} reassignment(s) from Cerebras")
+                    for r in cerebras_reassignments:
                         print(f"  Drone {r['drone_id']} -> [{r['target_tile'][0]},{r['target_tile'][1]}] : {r['reason']}")
-                    self.last_reassignments = reassignments
-                    return reassignments
+                    # Merge: idle reassignments first, Cerebras overrides any conflicts
+                    merged = {r["drone_id"]: r for r in idle_reassignments}
+                    merged.update({r["drone_id"]: r for r in cerebras_reassignments})
+                    self.last_reassignments = list(merged.values())
+                    return self.last_reassignments
             except Exception as e:
                 print(f"[Coordinator] Exception: {e}")
                 continue
 
-        return []
+        self.last_reassignments = idle_reassignments
+        return idle_reassignments
