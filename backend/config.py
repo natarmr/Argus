@@ -7,7 +7,7 @@ class Settings(BaseSettings):
     cesium_ion_token: str = Field(..., validation_alias="CESIUM_ION_TOKEN")
     tick_interval: float = 2.0
     grid_size: int = 10
-    num_drones: int = 10
+    num_drones: int = 20
     cesium_asset_name: str = "Bing Maps Aerial"
     redis_host: str = "localhost"
     redis_port: int = 6379

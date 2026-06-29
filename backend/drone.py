@@ -2,7 +2,7 @@ import time
 import random
 from backend.grid import tile_id, all_tiles, get_neighbors, parse_tile_id, GRID_SIZE
 from backend.memory import collective_memory, add_observation, get_tile
-from backend.memory import claim_tile, release_claim, is_claimed_by_other, claims
+from backend.memory import claim_tile, release_claim, claims
 from backend.cesium_tiles import get_tile_image_bytes
 from backend.cerebras_client import describe_tile
 
@@ -40,7 +40,12 @@ class DroneAgent:
                 print(f"[Drone {self.drone_id}] Already observed {tid}, skipping")
                 return False
 
-        # Mark in_progress immediately so other drones' BFS won't target it
+        # Atomic claim — if another drone is about to observe this same tile, skip
+        if not claim_tile(tid, self.drone_id):
+            print(f"[Drone {self.drone_id}] Tile {tid} claimed by another drone, skipping")
+            return False
+
+        # Mark in_progress early so other drones' BFS won't target it
         if tile["status"] == "unexplored":
             tile["status"] = "in_progress"
 
@@ -87,10 +92,9 @@ class DroneAgent:
                 claim_tile(self.target_tile, self.drone_id)
                 return self._path_to(self.row, self.col, tr, tc)
 
-        if tile["status"] == "unexplored":
+        if tile["status"] == "unexplored" and claim_tile(tid, self.drone_id):
             tile["status"] = "in_progress"
             self.target_tile = tid
-            claim_tile(tid, self.drone_id)
             return self.row, self.col
 
         visited = {tid}
@@ -103,9 +107,8 @@ class DroneAgent:
                     continue
                 visited.add(ntid)
                 ntile = get_tile(ntid)
-                if ntile["status"] == "unexplored" and not is_claimed_by_other(ntid, self.drone_id):
+                if ntile["status"] == "unexplored" and claim_tile(ntid, self.drone_id):
                     self.target_tile = ntid
-                    claim_tile(ntid, self.drone_id)
                     return self._path_to(self.row, self.col, nr, nc)
                 queue.append((nr, nc, dist + 1))
 
