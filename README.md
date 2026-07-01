@@ -39,9 +39,3 @@ CesiumJS 3D viewer page. Loads OSM Buildings tileset, renders the 20×20 tile gr
 
 ### `frontend/app.js`
 Client-side logic for the CesiumJS viewer. Polls `/state` every second to update drone positions (smooth lerp animation), tile colors, traffic heatmap overlay (green→yellow→dark-orange→dark-red density layer rendered as separate entities at height 1), coverage stats, and terrain breakdown. Handles tile click popups showing observations, structures, landmarks, traffic data, and congestion points. Triggers auto-download on simulation completion and provides manual download buttons for JSON export and high-res PNG map screenshot.
-
-### `requirements.txt`
-Python dependencies: FastAPI + uvicorn (web server), httpx (Cerebras API client), pydantic-settings (config), python-dotenv (.env loader), and redis (optional backend).
-
-### `AGENTS.md`
-Project specification document. Defines the target area (Lower Manhattan), agent roster (Drone, Coordinator, Synthesis), collective memory schema, tick loop architecture, Cerebras usage patterns, tech stack, and build order. Kept as pure specification, not a developer guide.
