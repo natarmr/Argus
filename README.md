@@ -1,6 +1,6 @@
 # Hivemind Drone Swarm Mapper
 
-A simulated drone swarm that collectively maps Lower Manhattan using Gemma 4 31B vision via Cerebras. Each drone is an autonomous agent; all share a collective memory that aggregates into a unified semantic map displayed on a CesiumJS 3D globe.
+A simulated drone swarm that collectively maps any terrain using Gemma 4 31B vision via Cerebras. Each drone is an autonomous agent; all share a collective memory that aggregates into a unified semantic map displayed on a CesiumJS 3D globe.
 
 ## File Reference
 
